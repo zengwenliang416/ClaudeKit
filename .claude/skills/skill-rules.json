@@ -1,7 +1,26 @@
 {
-    "version": "1.0",
-    "description": "Skill activation triggers for Claude Code. Controls when skills automatically suggest or block actions.",
+    "version": "1.1",
+    "description": "Skill activation triggers for Claude Code. Controls when skills automatically suggest or block actions. Now with multi-tech-stack support.",
     "skills": {
+        "tech-stack-detector": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "critical",
+            "description": "Auto-detect project tech stack and route to appropriate guidelines",
+            "promptTriggers": {
+                "keywords": [
+                    "project", "setup", "init", "start", "开始", "初始化", "项目",
+                    "vue", "react", "spring", "egg", "创建应用", "新项目"
+                ],
+                "intentPatterns": [
+                    "(start|begin|setup|init).*?project",
+                    "(create|build|develop).*?application",
+                    "what.*?tech.*?stack",
+                    "(开始|创建|初始化).*?(项目|应用)",
+                    "使用.*(vue|react|spring|egg)"
+                ]
+            }
+        },
         "skill-developer": {
             "type": "domain",
             "enforcement": "suggest",
@@ -29,7 +48,7 @@
             "type": "domain",
             "enforcement": "suggest",
             "priority": "high",
-            "description": "Backend development patterns for Node.js/Express/TypeScript",
+            "description": "Backend development patterns - supports Express/Spring Boot/Egg.js",
             "promptTriggers": {
                 "keywords": [
                     "backend",
@@ -48,6 +67,14 @@
                     "Zod",
                     "Prisma",
                     "database access",
+                    "后端",
+                    "接口",
+                    "服务",
+                    "数据库",
+                    "spring boot",
+                    "egg",
+                    "mybatis",
+                    "typeorm",
                     "BaseController",
                     "dependency injection",
                     "unifiedConfig",
@@ -58,7 +85,10 @@
                     "(fix|handle|debug).*?(error|exception|backend)",
                     "(add|implement).*?(middleware|validation|error.*?handling)",
                     "(organize|structure|refactor).*?(backend|service|API)",
-                    "(how to|best practice).*?(backend|route|controller|service)"
+                    "(how to|best practice).*?(backend|route|controller|service)",
+                    "(创建|开发|实现|编写).*?(接口|API|后端|服务)",
+                    "(如何|怎么).*?(后端|接口|数据库)",
+                    "(修复|处理|调试).*?(错误|异常|后端)"
                 ]
             },
             "fileTriggers": {
@@ -88,7 +118,7 @@
             "type": "guardrail",
             "enforcement": "block",
             "priority": "high",
-            "description": "React/TypeScript best practices including MUI v7 compatibility",
+            "description": "Frontend best practices - supports React/Vue with MUI/Element Plus",
             "promptTriggers": {
                 "keywords": [
                     "component",
@@ -104,12 +134,24 @@
                     "Grid",
                     "styling",
                     "frontend",
-                    "React"
+                    "React",
+                    "组件",
+                    "前端",
+                    "页面",
+                    "界面",
+                    "vue",
+                    "element",
+                    "element-plus",
+                    "pinia",
+                    "antd"
                 ],
                 "intentPatterns": [
                     "(create|add|make|build|update|modify|edit).*?(component|UI|page|modal|dialog|form)",
                     "(how to|best practice).*?(component|react|MUI)",
-                    "(style|design|layout).*?(component|UI)"
+                    "(style|design|layout).*?(component|UI)",
+                    "(创建|开发|实现|编写).*?(组件|页面|界面|前端)",
+                    "(如何|怎么).*?(vue|react|组件|前端)",
+                    "(样式|设计|布局).*?(组件|界面)"
                 ]
             },
             "fileTriggers": {
