@@ -49,3 +49,7 @@ temp/
 # Prisma
 .env
 prisma/.env
+
+# Claude Code cache
+.claude/tsc-cache/
+.claude/commitcraft/
