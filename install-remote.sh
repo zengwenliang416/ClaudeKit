@@ -1,8 +1,15 @@
 #!/bin/bash
 
+# ============================================================================
 # ClaudeKit - 远程安装脚本
-# 使用方式: curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh | bash
-# 或指定安装位置: curl -fsSL ... | bash -s -- --project
+# ============================================================================
+# 使用方式:
+#   bash <(curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh)
+#
+# 选项:
+#   --project, -p    安装到当前项目目录
+#   --global, -g     全局安装到 ~/.claudekit
+# ============================================================================
 
 set -e
 
@@ -19,112 +26,214 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+MAGENTA='\033[0;35m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m'
 
-# 函数定义
-print_step() {
-    echo -e "${GREEN}[步骤]${NC} $1"
+# 符号定义
+CHECKMARK="✓"
+CROSS="✗"
+ARROW="→"
+INFO="ℹ"
+WARNING="⚠"
+ROCKET="🚀"
+PACKAGE="📦"
+GEAR="⚙"
+SPARKLES="✨"
+FOLDER="📁"
+FILE="📄"
+LOCK="🔒"
+
+# ============================================================================
+# 辅助函数
+# ============================================================================
+
+print_header() {
+    echo ""
+    echo -e "${BOLD}${BLUE}$1${NC}"
+    echo -e "${DIM}$(printf '─%.0s' {1..60})${NC}"
 }
 
 print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "  ${GREEN}${CHECKMARK}${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "  ${RED}${CROSS}${NC} $1"
+}
+
+print_warning() {
+    echo -e "  ${YELLOW}${WARNING}${NC} $1"
 }
 
 print_info() {
-    echo -e "${CYAN}ℹ️  $1${NC}"
+    echo -e "  ${CYAN}${INFO}${NC} $1"
+}
+
+print_step() {
+    echo ""
+    echo -e "${BOLD}${ARROW} $1${NC}"
+}
+
+print_substep() {
+    echo -e "  ${DIM}${ARROW}${NC} $1"
 }
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Logo
+# ============================================================================
+# Logo 展示
+# ============================================================================
+
 show_logo() {
+    clear
     echo ""
-    echo -e "${BLUE}╔════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║              ClaudeKit Remote Installer                ║${NC}"
-    echo -e "${BLUE}║         让 Claude Code 更智能的工具箱                    ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${BOLD}${CYAN}"
+    cat << "EOF"
+   ┌─────────────────────────────────────────────────────────────┐
+   │                                                             │
+   │   ╔═══╗╔╗       ╔╗╔═══╗╔╗  ╔╗╔═══╗╔╗ ╔╗╔══╗╔════╗          │
+   │   ║╔═╗║║║       ║║║╔═╗║║║  ║║║╔═╗║║║ ║║╚╣╠╝╚══╗ ║          │
+   │   ║║ ╚╝║║╔══╗╔╗╔╝║║╚══╗║║ ╔╝║║║ ║║║╚═╝║ ║║    ║ ║          │
+   │   ║║ ╔╗║║╚╣╠╝║║║╚╗╚══╗║║║ ╚╗║║║ ║║║╔═╗║ ║║    ║ ║          │
+   │   ║╚═╝║║╚═╣╠╗║╚═╗║║╚═╝║║╚══╝║║╚═╝║║║ ║║╔╣╠╗   ║ ║          │
+   │   ╚═══╝╚══╩═╝╚══╝╚═══╝╚════╝╚═══╝╚╝ ╚╝╚══╝   ╚═╝          │
+   │                                                             │
+   │              让 Claude Code 更智能的工具箱                   │
+   │                                                             │
+   └─────────────────────────────────────────────────────────────┘
+EOF
+    echo -e "${NC}"
+    echo -e "${DIM}                     Version 1.0.0 | MIT License${NC}"
+    echo -e "${DIM}           https://github.com/zengwenliang416/ClaudeKit${NC}"
     echo ""
 }
 
-# 检查系统要求
+# ============================================================================
+# 进度条
+# ============================================================================
+
+show_progress() {
+    local current=$1
+    local total=$2
+    local width=40
+    local percentage=$((current * 100 / total))
+    local completed=$((width * current / total))
+    local remaining=$((width - completed))
+
+    printf "\r  ${BOLD}进度:${NC} ["
+    printf "${GREEN}%${completed}s${NC}" | tr ' ' '█'
+    printf "${DIM}%${remaining}s${NC}" | tr ' ' '░'
+    printf "] ${BOLD}%3d%%${NC}" $percentage
+}
+
+# ============================================================================
+# 系统检查
+# ============================================================================
+
 check_requirements() {
-    print_step "检查系统要求..."
+    print_header "${GEAR} 系统环境检查"
+
+    local checks=0
+    local total=4
 
     # 检查 Node.js
+    ((checks++))
+    show_progress $checks $total
+    sleep 0.1
+
     if ! command_exists node; then
-        print_error "Node.js 未安装！"
         echo ""
-        echo "请先安装 Node.js (>= 18.0.0):"
-        echo "  • 官网: https://nodejs.org/"
-        echo "  • macOS: brew install node"
-        echo "  • Ubuntu: curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -"
+        print_error "Node.js 未安装"
+        echo ""
+        echo -e "${YELLOW}请先安装 Node.js (>= 18.0.0):${NC}"
+        echo -e "  ${CYAN}${ARROW}${NC} 官网: ${BOLD}https://nodejs.org/${NC}"
+        echo -e "  ${CYAN}${ARROW}${NC} macOS: ${DIM}brew install node${NC}"
+        echo -e "  ${CYAN}${ARROW}${NC} Ubuntu: ${DIM}curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -${NC}"
         echo ""
         exit 1
     fi
 
     NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
     if [ "$NODE_VERSION" -lt 18 ]; then
-        print_error "Node.js 版本过低！需要 >= 18.0.0"
-        echo "   当前版本: $(node -v)"
+        echo ""
+        print_error "Node.js 版本过低 (需要 >= 18.0.0, 当前: $(node -v))"
         exit 1
     fi
-    echo "   Node.js: $(node -v) ✓"
 
     # 检查 npm
+    ((checks++))
+    show_progress $checks $total
+    sleep 0.1
+
     if ! command_exists npm; then
-        print_error "npm 未安装！"
+        echo ""
+        print_error "npm 未安装"
         exit 1
     fi
-    echo "   npm: $(npm -v) ✓"
 
     # 检查下载工具
+    ((checks++))
+    show_progress $checks $total
+    sleep 0.1
+
     if command_exists curl; then
         DOWNLOAD_CMD="curl -fsSL"
-        echo "   下载工具: curl ✓"
     elif command_exists wget; then
         DOWNLOAD_CMD="wget -qO-"
-        echo "   下载工具: wget ✓"
     else
-        print_error "需要 curl 或 wget 来下载文件！"
+        echo ""
+        print_error "需要 curl 或 wget 来下载文件"
         exit 1
     fi
 
-    print_success "系统要求检查通过"
+    # 完成检查
+    ((checks++))
+    show_progress $checks $total
     echo ""
+
+    # 显示检查结果
+    echo ""
+    print_success "Node.js ${DIM}$(node -v)${NC}"
+    print_success "npm ${DIM}$(npm -v)${NC}"
+    print_success "下载工具 ${DIM}$(command_exists curl && echo "curl" || echo "wget")${NC}"
+    print_success "系统环境检查通过"
 }
 
+# ============================================================================
 # 选择安装位置
+# ============================================================================
+
 select_install_location() {
-    print_step "选择安装位置..."
+    print_header "${FOLDER} 选择安装位置"
 
     # 检查命令行参数
     if [ "$1" = "--project" ] || [ "$1" = "-p" ]; then
         INSTALL_MODE="project"
         INSTALL_DIR="$(pwd)"
-        print_info "安装模式: 当前项目目录"
+        print_info "模式: ${BOLD}项目级安装${NC}"
     elif [ "$1" = "--global" ] || [ "$1" = "-g" ]; then
         INSTALL_MODE="global"
-        # ClaudeKit 全局安装目录
         INSTALL_DIR="$HOME/.claudekit"
-        print_info "安装模式: 全局安装"
+        print_info "模式: ${BOLD}全局安装${NC}"
     else
         # 交互式选择
         echo ""
-        echo "请选择安装位置:"
-        echo "  1) 当前项目目录 (推荐用于单个项目)"
-        echo "  2) 全局安装 (所有项目共享)"
+        echo -e "  ${BOLD}请选择安装位置:${NC}"
         echo ""
-        read -p "请输入选择 (1/2): " choice
+        echo -e "    ${CYAN}1)${NC} ${BOLD}当前项目目录${NC}"
+        echo -e "       ${DIM}推荐用于单个项目，配置独立${NC}"
+        echo -e "       ${DIM}路径: $(pwd)${NC}"
+        echo ""
+        echo -e "    ${CYAN}2)${NC} ${BOLD}全局安装${NC}"
+        echo -e "       ${DIM}所有项目共享，便于统一管理${NC}"
+        echo -e "       ${DIM}路径: ~/.claudekit${NC}"
+        echo ""
+        echo -n -e "  ${BOLD}请输入选择 (1/2):${NC} "
+        read -r choice
 
         case $choice in
             1)
@@ -136,178 +245,199 @@ select_install_location() {
                 INSTALL_DIR="$HOME/.claudekit"
                 ;;
             *)
-                print_error "无效的选择！"
+                echo ""
+                print_error "无效的选择"
                 exit 1
                 ;;
         esac
     fi
 
-    echo "   安装目录: $INSTALL_DIR"
+    echo ""
+    print_success "安装目录: ${DIM}$INSTALL_DIR${NC}"
 
     # 创建安装目录
     if [ ! -d "$INSTALL_DIR" ]; then
         mkdir -p "$INSTALL_DIR"
     fi
-
-    print_success "安装位置确定"
-    echo ""
 }
 
+# ============================================================================
 # 下载文件
+# ============================================================================
+
 download_infrastructure() {
-    print_step "下载 ClaudeKit..."
+    print_header "${PACKAGE} 下载 ClaudeKit"
 
     # 创建临时目录
     TEMP_DIR=$(mktemp -d)
-    cd "$TEMP_DIR"
+    trap "rm -rf $TEMP_DIR" EXIT
 
-    echo "   下载地址: $GITHUB_ARCHIVE_URL"
+    print_substep "下载源: ${DIM}GitHub Release${NC}"
+    print_substep "目标: ${DIM}$GITHUB_ARCHIVE_URL${NC}"
+
+    echo ""
+    echo -n "  "
 
     # 下载压缩包
     if [ "$DOWNLOAD_CMD" = "curl -fsSL" ]; then
-        curl -fsSL "$GITHUB_ARCHIVE_URL" -o infrastructure.tar.gz
+        if curl -fsSL --progress-bar "$GITHUB_ARCHIVE_URL" -o "$TEMP_DIR/infrastructure.tar.gz"; then
+            echo ""
+            print_success "下载完成"
+        else
+            echo ""
+            print_error "下载失败"
+            exit 1
+        fi
     else
-        wget -q "$GITHUB_ARCHIVE_URL" -O infrastructure.tar.gz
-    fi
-
-    if [ ! -f infrastructure.tar.gz ]; then
-        print_error "下载失败！"
-        rm -rf "$TEMP_DIR"
-        exit 1
+        if wget -q --show-progress "$GITHUB_ARCHIVE_URL" -O "$TEMP_DIR/infrastructure.tar.gz" 2>&1; then
+            echo ""
+            print_success "下载完成"
+        else
+            echo ""
+            print_error "下载失败"
+            exit 1
+        fi
     fi
 
     # 解压
-    echo "   解压文件..."
+    print_substep "解压文件..."
+    cd "$TEMP_DIR"
     tar -xzf infrastructure.tar.gz
 
     # 找到解压后的目录
     EXTRACT_DIR=$(find . -maxdepth 1 -type d -name "*$GITHUB_REPO*" | head -1)
 
     if [ -z "$EXTRACT_DIR" ]; then
-        print_error "解压失败！"
-        rm -rf "$TEMP_DIR"
+        print_error "解压失败"
         exit 1
     fi
 
-    # 复制 .claude 目录到安装位置
-    echo "   复制文件到安装目录..."
+    print_success "解压完成"
 
-    # 增量安装:只添加/更新 ClaudeKit 文件,不删除任何现有文件
+    # 复制文件
+    echo ""
+    print_step "${SPARKLES} 安装文件"
+
+    # 增量安装逻辑
     if [ -d "$INSTALL_DIR/.claude" ]; then
-        print_warning "检测到现有 .claude 目录，进行增量更新..."
+        print_info "检测到现有配置，使用${BOLD}增量模式${NC}"
+        echo ""
 
-        # 使用 rsync 或 cp 增量复制,不删除现有文件
-        # -r: 递归
-        # -u: 只更新较新的文件
-        # -v: 显示详情
-        # --ignore-existing: 跳过已存在的文件(可选,如果想保留用户修改)
+        print_substep "分析现有文件..."
+        sleep 0.2
 
-        echo "   📦 增量更新 ClaudeKit 文件..."
-
-        # 创建临时标记文件,标识 ClaudeKit 管理的文件
-        CLAUDEKIT_MANIFEST="$INSTALL_DIR/.claude/.claudekit-files"
-
-        # 复制时不覆盖已存在的文件,只添加新文件和更新 ClaudeKit 自己的文件
-        if command -v rsync >/dev/null 2>&1; then
-            # 使用 rsync (更智能)
-            rsync -ru --info=name1 "$EXTRACT_DIR/.claude/" "$INSTALL_DIR/.claude/"
-            echo "   ✓ 使用 rsync 增量更新"
-        else
-            # 使用 cp (基础方式)
-            cp -rn "$EXTRACT_DIR/.claude/"* "$INSTALL_DIR/.claude/" 2>/dev/null || true
-            echo "   ✓ 使用 cp 增量更新"
-        fi
-
-        # 记录 ClaudeKit 文件清单
-        find "$EXTRACT_DIR/.claude" -type f -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.ts" | \
-            sed "s|$EXTRACT_DIR/.claude/||" > "$CLAUDEKIT_MANIFEST" 2>/dev/null || true
-
-        echo "   ✓ 增量更新完成,所有现有文件已保留"
-        print_success "增量安装完成,用户自定义内容完全保留"
-    else
-        # 全新安装
-        mkdir -p "$INSTALL_DIR/.claude"
-        cp -r "$EXTRACT_DIR/.claude/"* "$INSTALL_DIR/.claude/"
-        echo "   ✓ 全新安装 .claude/"
+        print_substep "保留用户自定义内容..."
+        sleep 0.2
 
         # 创建文件清单
         CLAUDEKIT_MANIFEST="$INSTALL_DIR/.claude/.claudekit-files"
-        find "$INSTALL_DIR/.claude" -type f -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.ts" | \
+
+        if command -v rsync >/dev/null 2>&1; then
+            print_substep "使用 rsync 智能合并..."
+            rsync -ru --quiet "$EXTRACT_DIR/.claude/" "$INSTALL_DIR/.claude/"
+        else
+            print_substep "复制新增文件..."
+            cp -rn "$EXTRACT_DIR/.claude/"* "$INSTALL_DIR/.claude/" 2>/dev/null || true
+        fi
+
+        # 记录 ClaudeKit 文件清单
+        find "$EXTRACT_DIR/.claude" -type f \( -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.ts" \) | \
+            sed "s|$EXTRACT_DIR/.claude/||" > "$CLAUDEKIT_MANIFEST" 2>/dev/null || true
+
+        echo ""
+        print_success "增量安装完成"
+        print_info "你的自定义文件已完全保留"
+    else
+        print_info "执行全新安装"
+        echo ""
+
+        mkdir -p "$INSTALL_DIR/.claude"
+        cp -r "$EXTRACT_DIR/.claude/"* "$INSTALL_DIR/.claude/"
+
+        # 创建文件清单
+        CLAUDEKIT_MANIFEST="$INSTALL_DIR/.claude/.claudekit-files"
+        find "$INSTALL_DIR/.claude" -type f \( -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.ts" \) | \
             sed "s|$INSTALL_DIR/.claude/||" > "$CLAUDEKIT_MANIFEST" 2>/dev/null || true
+
+        print_success "文件复制完成"
     fi
 
-    # 复制文档文件（如果是全局安装）
+    # 复制文档文件
     if [ "$INSTALL_MODE" = "global" ]; then
         cp -f "$EXTRACT_DIR"/*.md "$INSTALL_DIR/" 2>/dev/null || true
     fi
 
-    # 清理临时文件
     cd - > /dev/null
-    rm -rf "$TEMP_DIR"
-
-    print_success "文件下载完成"
-    echo ""
 }
 
+# ============================================================================
 # 安装依赖
+# ============================================================================
+
 install_dependencies() {
-    print_step "安装 npm 依赖..."
+    print_header "${PACKAGE} 安装依赖"
 
     cd "$INSTALL_DIR/.claude/hooks"
 
     if [ ! -f package.json ]; then
-        print_error "package.json 不存在！"
+        print_error "package.json 不存在"
         exit 1
     fi
 
-    echo "   运行 npm install..."
-    if npm install --silent > /dev/null 2>&1; then
-        print_success "依赖安装成功"
-    else
-        print_warning "依赖安装可能有警告，尝试继续..."
-    fi
-
     echo ""
+    print_substep "运行 npm install..."
+    echo ""
+
+    # 显示 npm 输出，但抑制警告
+    if npm install --silent --no-audit 2>&1 | grep -v "npm WARN" | sed 's/^/    /'; then
+        echo ""
+        print_success "依赖安装完成"
+    else
+        echo ""
+        print_warning "依赖安装可能有警告，但可以继续"
+    fi
 }
 
+# ============================================================================
 # 设置权限
+# ============================================================================
+
 set_permissions() {
-    print_step "设置文件权限..."
+    print_header "${LOCK} 配置权限"
 
     # 设置所有 .sh 文件的执行权限
     chmod +x "$INSTALL_DIR"/.claude/hooks/*.sh 2>/dev/null || true
 
-    # 列出设置权限的文件
-    local count=$(find "$INSTALL_DIR/.claude/hooks" -name "*.sh" | wc -l)
-    echo "   设置了 $count 个脚本的执行权限"
-
-    print_success "权限设置完成"
-    echo ""
+    local count=$(find "$INSTALL_DIR/.claude/hooks" -name "*.sh" 2>/dev/null | wc -l)
+    print_success "设置了 ${BOLD}$count${NC} 个脚本的执行权限"
 }
 
+# ============================================================================
 # 创建必要目录
+# ============================================================================
+
 create_directories() {
-    print_step "创建必要目录..."
+    print_header "${FOLDER} 创建目录结构"
 
     # 创建 dev 目录
     if [ ! -d "$INSTALL_DIR/dev" ] && [ "$INSTALL_MODE" = "project" ]; then
         mkdir -p "$INSTALL_DIR/dev"
-        echo "   ✓ 创建 dev/ 目录"
+        print_success "创建 ${DIM}dev/${NC} 目录"
     fi
 
     # 创建 cache 目录
     if [ ! -d "$INSTALL_DIR/.claude/cache" ]; then
         mkdir -p "$INSTALL_DIR/.claude/cache"
-        echo "   ✓ 创建 .claude/cache/ 目录"
+        print_success "创建 ${DIM}.claude/cache/${NC} 目录"
     fi
-
-    print_success "目录创建完成"
-    echo ""
 }
 
+# ============================================================================
 # 生成配置
+# ============================================================================
+
 generate_config() {
-    print_step "生成配置文件..."
+    print_header "${FILE} 生成配置文件"
 
     # 根据安装模式生成不同的配置
     if [ "$INSTALL_MODE" = "project" ]; then
@@ -358,18 +488,21 @@ generate_config() {
 }
 EOF
 
-    echo "   配置文件: $CONFIG_DIR/claude-settings.json"
+    print_success "配置文件: ${DIM}$CONFIG_DIR/claude-settings.json${NC}"
 
     # 如果是全局安装，创建初始化脚本
     if [ "$INSTALL_MODE" = "global" ]; then
         cat > "$INSTALL_DIR/init-project.sh" << 'EOF'
 #!/bin/bash
-# 在项目中初始化 ClaudeKit (增量模式)
+# ============================================================================
+# ClaudeKit - 项目初始化脚本 (增量模式)
+# ============================================================================
 
 GLOBAL_DIR="$HOME/.claudekit"
 PROJECT_DIR="$(pwd)"
 
-echo "正在为当前项目初始化 ClaudeKit..."
+echo ""
+echo "🚀 正在为当前项目初始化 ClaudeKit..."
 echo ""
 
 # 增量安装:只添加/更新 ClaudeKit 文件,完全不影响现有文件
@@ -384,16 +517,10 @@ if [ -d "$PROJECT_DIR/.claude" ]; then
 
     echo "   📦 增量复制 ClaudeKit 文件..."
 
-    # 使用 rsync 或 cp 进行增量复制
-    # -r: 递归
-    # -u: 只更新较新的文件
-    # -n: 不覆盖已存在的文件
     if command -v rsync >/dev/null 2>&1; then
-        # rsync -ru: 递归 + 只更新较新文件
         rsync -ru --info=name1 "$GLOBAL_DIR/.claude/" "$PROJECT_DIR/.claude/" 2>/dev/null
         echo "   ✓ 使用 rsync 增量更新"
     else
-        # cp -rn: 递归 + 不覆盖已存在文件
         cp -rn "$GLOBAL_DIR/.claude/"* "$PROJECT_DIR/.claude/" 2>/dev/null || true
         echo "   ✓ 使用 cp 增量更新"
     fi
@@ -428,82 +555,108 @@ echo "💡 说明:"
 echo "  • 增量模式: 只添加新文件,不覆盖已存在文件"
 echo "  • 你可以安全地修改任何 ClaudeKit 文件"
 echo "  • 再次运行此脚本可获取最新的 ClaudeKit 文件"
+echo ""
 EOF
         chmod +x "$INSTALL_DIR/init-project.sh"
-        echo "   初始化脚本: $INSTALL_DIR/init-project.sh"
+        print_success "初始化脚本: ${DIM}$INSTALL_DIR/init-project.sh${NC}"
     fi
-
-    print_success "配置生成完成"
-    echo ""
 }
 
+# ============================================================================
 # 验证安装
+# ============================================================================
+
 verify_installation() {
-    print_step "验证安装..."
+    print_header "${GEAR} 验证安装"
 
     cd "$INSTALL_DIR/.claude/hooks"
 
     # TypeScript 检查
     if npm run check > /dev/null 2>&1; then
-        echo "   ✓ TypeScript 配置正确"
+        print_success "TypeScript 配置正确"
     else
         print_warning "TypeScript 检查有警告"
     fi
 
     # Hook 系统测试
-    echo '{"prompt":"test"}' | npx tsx skill-activation-prompt.ts > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        echo "   ✓ Hook 系统正常"
+    if echo '{"prompt":"test"}' | npx tsx skill-activation-prompt.ts > /dev/null 2>&1; then
+        print_success "Hook 系统正常"
     else
-        print_warning "Hook 系统测试失败，请手动检查"
+        print_warning "Hook 系统测试未通过"
     fi
-
-    print_success "安装验证完成"
-    echo ""
 }
 
+# ============================================================================
 # 显示完成信息
+# ============================================================================
+
 show_completion() {
-    echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║                    🎉 安装成功！                       ║${NC}"
-    echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
     echo ""
+    echo ""
+    echo -e "${GREEN}${BOLD}"
+    cat << "EOF"
+   ┌─────────────────────────────────────────────────────────────┐
+   │                                                             │
+   │                     🎉  安装成功！                          │
+   │                                                             │
+   └─────────────────────────────────────────────────────────────┘
+EOF
+    echo -e "${NC}"
 
     if [ "$INSTALL_MODE" = "project" ]; then
-        echo "📋 项目模式安装完成"
-        echo "   安装位置: $INSTALL_DIR"
+        echo -e "${BOLD}📦 项目级安装完成${NC}"
+        echo -e "${DIM}   安装位置: $INSTALL_DIR${NC}"
         echo ""
-        echo "🚀 下一步:"
-        echo "1. 将 claude-settings.json 的内容合并到 Claude Code 设置中"
-        echo "2. 设置环境变量: export CLAUDE_PROJECT_DIR=\"$INSTALL_DIR\""
-        echo "3. 重启 Claude Code"
+        echo -e "${BOLD}🚀 下一步操作:${NC}"
+        echo ""
+        echo -e "  ${CYAN}1.${NC} 合并配置文件"
+        echo -e "     ${DIM}将 claude-settings.json 的内容合并到 Claude Code 设置${NC}"
+        echo ""
+        echo -e "  ${CYAN}2.${NC} 设置环境变量"
+        echo -e "     ${DIM}export CLAUDE_PROJECT_DIR=\"$INSTALL_DIR\"${NC}"
+        echo ""
+        echo -e "  ${CYAN}3.${NC} 重启 Claude Code"
+        echo ""
     else
-        echo "📋 全局模式安装完成"
-        echo "   安装位置: $INSTALL_DIR"
+        echo -e "${BOLD}🌍 全局安装完成${NC}"
+        echo -e "${DIM}   安装位置: $INSTALL_DIR${NC}"
         echo ""
-        echo "🚀 在项目中使用:"
-        echo "1. 进入你的项目目录"
-        echo "2. 运行: $INSTALL_DIR/init-project.sh"
-        echo "3. 将配置合并到 Claude Code 设置中"
-        echo "4. 重启 Claude Code"
+        echo -e "${BOLD}🚀 在项目中使用:${NC}"
+        echo ""
+        echo -e "  ${CYAN}1.${NC} 进入你的项目目录"
+        echo ""
+        echo -e "  ${CYAN}2.${NC} 运行初始化脚本"
+        echo -e "     ${DIM}$INSTALL_DIR/init-project.sh${NC}"
+        echo ""
+        echo -e "  ${CYAN}3.${NC} 合并配置到 Claude Code 设置"
+        echo ""
+        echo -e "  ${CYAN}4.${NC} 重启 Claude Code"
+        echo ""
     fi
 
+    echo -e "${BOLD}✨ 功能特性:${NC}"
     echo ""
-    echo "📖 功能特性:"
-    echo "   • 中文支持：'创建组件'、'开发接口'"
-    echo "   • 技术栈检测：自动识别 Vue/React/Spring Boot"
-    echo "   • Skills 自动激活"
-    echo "   • Agent 智能系统"
-    echo "   • Dev Docs 持久化"
+    echo -e "  ${GREEN}${CHECKMARK}${NC} ${BOLD}中文支持${NC}      ${DIM}'创建组件'、'开发接口'${NC}"
+    echo -e "  ${GREEN}${CHECKMARK}${NC} ${BOLD}技术栈检测${NC}    ${DIM}自动识别 Vue/React/Spring Boot${NC}"
+    echo -e "  ${GREEN}${CHECKMARK}${NC} ${BOLD}Skills 激活${NC}   ${DIM}智能技能自动激活${NC}"
+    echo -e "  ${GREEN}${CHECKMARK}${NC} ${BOLD}Agent 系统${NC}    ${DIM}专业代理协作${NC}"
+    echo -e "  ${GREEN}${CHECKMARK}${NC} ${BOLD}Dev Docs${NC}      ${DIM}持久化项目上下文${NC}"
     echo ""
-    echo "❓ 需要帮助？"
-    echo "   • 查看文档: $INSTALL_DIR/.claude/hooks/README.md"
-    echo "   • GitHub: https://github.com/$GITHUB_USER/$GITHUB_REPO"
+    echo -e "${BOLD}📚 文档资源:${NC}"
     echo ""
-    print_success "感谢使用 ClaudeKit！"
+    echo -e "  ${CYAN}${ARROW}${NC} 使用指南: ${DIM}$INSTALL_DIR/.claude/hooks/README.md${NC}"
+    echo -e "  ${CYAN}${ARROW}${NC} GitHub: ${DIM}https://github.com/$GITHUB_USER/$GITHUB_REPO${NC}"
+    echo ""
+    echo -e "${DIM}$(printf '─%.0s' {1..60})${NC}"
+    echo ""
+    echo -e "         ${GREEN}感谢使用 ClaudeKit! ${SPARKLES}${NC}"
+    echo ""
 }
 
+# ============================================================================
 # 主函数
+# ============================================================================
+
 main() {
     show_logo
     check_requirements
