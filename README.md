@@ -83,22 +83,22 @@ Dev Docs system maintains state across Claude Code sessions, no more repeating t
 
 **macOS/Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh)
 ```
 
 **Windows PowerShell:**
 ```powershell
-iwr -useb https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.ps1 | iex
+Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.ps1" -UseBasicParsing).Content
 ```
 
 ### Installation Options
 
 ```bash
 # Project-level installation (recommended)
-curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh | bash -s -- --project
+bash <(curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh) --project
 
 # Global installation (shared across projects)
-curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh | bash -s -- --global
+bash <(curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh) --global
 ```
 
 ### 30-Second Setup

@@ -83,22 +83,22 @@ Dev Docs 系统让 Claude Code 跨会话保持工作状态，不再重复询问�
 
 **macOS/Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh)
 ```
 
 **Windows PowerShell:**
 ```powershell
-iwr -useb https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.ps1 | iex
+Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.ps1" -UseBasicParsing).Content
 ```
 
 ### 安装选项
 
 ```bash
 # 项目级安装（推荐）
-curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh | bash -s -- --project
+bash <(curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh) --project
 
 # 全局安装（所有项目共享）
-curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh | bash -s -- --global
+bash <(curl -fsSL https://raw.githubusercontent.com/zengwenliang416/ClaudeKit/main/install-remote.sh) --global
 ```
 
 ### 30 秒体验
