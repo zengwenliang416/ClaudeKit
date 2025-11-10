@@ -192,15 +192,45 @@ download_infrastructure() {
     # 复制 .claude 目录到安装位置
     echo "   复制文件到安装目录..."
 
-    # 备份现有的 .claude 目录（如果存在）
+    # 智能合并现有的 .claude 目录
     if [ -d "$INSTALL_DIR/.claude" ]; then
-        BACKUP_DIR="$INSTALL_DIR/.claude.backup.$(date +%Y%m%d_%H%M%S)"
-        print_warning "发现现有 .claude 目录，备份到: $BACKUP_DIR"
-        mv "$INSTALL_DIR/.claude" "$BACKUP_DIR"
-    fi
+        print_warning "检测到现有 .claude 目录，进行智能合并..."
 
-    # 复制新文件
-    cp -r "$EXTRACT_DIR/.claude" "$INSTALL_DIR/"
+        # 只覆盖 ClaudeKit 的核心文件,保留用户自定义内容
+        CLAUDEKIT_DIRS=("hooks" "skills" "agents" "commands")
+
+        for dir in "${CLAUDEKIT_DIRS[@]}"; do
+            if [ -d "$EXTRACT_DIR/.claude/$dir" ]; then
+                # 备份现有目录(如果有用户修改)
+                if [ -d "$INSTALL_DIR/.claude/$dir" ]; then
+                    BACKUP_DIR="$INSTALL_DIR/.claude/${dir}.backup.$(date +%Y%m%d_%H%M%S)"
+                    echo "   ⚠️  备份现有 $dir/ 到: ${dir}.backup.*"
+                    mv "$INSTALL_DIR/.claude/$dir" "$BACKUP_DIR"
+                fi
+                # 复制新版本
+                cp -r "$EXTRACT_DIR/.claude/$dir" "$INSTALL_DIR/.claude/"
+                echo "   ✓ 更新 $dir/"
+            fi
+        done
+
+        # 合并配置文件(保留用户的 settings.local.json)
+        if [ -f "$EXTRACT_DIR/.claude/settings.json" ]; then
+            cp "$EXTRACT_DIR/.claude/settings.json" "$INSTALL_DIR/.claude/"
+            echo "   ✓ 更新 settings.json"
+        fi
+
+        # 保留用户的 settings.local.json
+        if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
+            touch "$INSTALL_DIR/.claude/settings.local.json"
+            echo "   ✓ 保留 settings.local.json"
+        fi
+
+        print_success "智能合并完成,用户自定义内容已保留"
+    else
+        # 全新安装
+        cp -r "$EXTRACT_DIR/.claude" "$INSTALL_DIR/"
+        echo "   ✓ 全新安装 .claude/"
+    fi
 
     # 复制文档文件（如果是全局安装）
     if [ "$INSTALL_MODE" = "global" ]; then
@@ -336,32 +366,71 @@ GLOBAL_DIR="$HOME/.claudekit"
 PROJECT_DIR="$(pwd)"
 
 echo "正在为当前项目初始化 ClaudeKit..."
+echo ""
 
-# 备份现有 .claude 目录（如果存在）
-if [ -d "$PROJECT_DIR/.claude" ] && [ ! -L "$PROJECT_DIR/.claude" ]; then
-    BACKUP_DIR="$PROJECT_DIR/.claude.backup.$(date +%Y%m%d_%H%M%S)"
-    echo "⚠️  发现现有 .claude 目录，备份到: $BACKUP_DIR"
-    mv "$PROJECT_DIR/.claude" "$BACKUP_DIR"
+# 智能合并现有的 .claude 目录
+if [ -d "$PROJECT_DIR/.claude" ]; then
+    echo "🔍 检测到现有 .claude 目录，进行智能合并..."
+
+    # 删除旧的符号链接（如果存在）
+    if [ -L "$PROJECT_DIR/.claude" ]; then
+        rm "$PROJECT_DIR/.claude"
+        echo "   ✓ 清理旧的符号链接"
+    fi
+
+    # 只更新 ClaudeKit 核心目录,保留用户自定义内容
+    CLAUDEKIT_DIRS=("hooks" "skills" "agents" "commands")
+
+    for dir in "${CLAUDEKIT_DIRS[@]}"; do
+        if [ -d "$GLOBAL_DIR/.claude/$dir" ]; then
+            # 备份现有目录(如果存在)
+            if [ -d "$PROJECT_DIR/.claude/$dir" ]; then
+                BACKUP_DIR="$PROJECT_DIR/.claude/${dir}.backup.$(date +%Y%m%d_%H%M%S)"
+                mv "$PROJECT_DIR/.claude/$dir" "$BACKUP_DIR"
+                echo "   📦 备份 $dir/ → ${dir}.backup.*"
+            fi
+            # 复制新版本
+            cp -r "$GLOBAL_DIR/.claude/$dir" "$PROJECT_DIR/.claude/"
+            echo "   ✓ 更新 $dir/"
+        fi
+    done
+
+    # 更新配置文件,保留用户的 settings.local.json
+    if [ -f "$GLOBAL_DIR/.claude/settings.json" ]; then
+        cp "$GLOBAL_DIR/.claude/settings.json" "$PROJECT_DIR/.claude/"
+        echo "   ✓ 更新 settings.json"
+    fi
+
+    if [ ! -f "$PROJECT_DIR/.claude/settings.local.json" ]; then
+        touch "$PROJECT_DIR/.claude/settings.local.json"
+        echo "   ✓ 保留 settings.local.json (用户自定义配置)"
+    fi
+
+    echo ""
+    echo "✅ 智能合并完成,用户自定义内容已保留!"
+else
+    # 全新安装
+    echo "📦 全新安装 ClaudeKit..."
+    mkdir -p "$PROJECT_DIR/.claude"
+    cp -r "$GLOBAL_DIR/.claude"/* "$PROJECT_DIR/.claude/"
+    echo "   ✓ 复制完成"
+    echo ""
+    echo "✅ 初始化完成!"
 fi
-
-# 删除旧的符号链接（如果存在）
-if [ -L "$PROJECT_DIR/.claude" ]; then
-    rm "$PROJECT_DIR/.claude"
-fi
-
-# 复制 ClaudeKit 文件到项目
-echo "📦 复制 ClaudeKit 文件..."
-cp -r "$GLOBAL_DIR/.claude" "$PROJECT_DIR/"
 
 # 创建 dev 目录
 mkdir -p "$PROJECT_DIR/dev"
 
-echo "✅ 初始化完成！"
 echo ""
 echo "📝 下一步:"
 echo "  1. 在 Claude Code 中打开此项目"
 echo "  2. Skills 会自动激活"
 echo "  3. 尝试说 '创建组件' 或 '项目技术栈' 来测试"
+echo ""
+echo "💡 提示:"
+echo "  • 你的自定义文件已保留在原位"
+echo "  • 备份文件在 .claude/*.backup.* 目录中"
+echo "  • settings.local.json 可用于项目特定配置"
 EOF
         chmod +x "$INSTALL_DIR/init-project.sh"
         echo "   初始化脚本: $INSTALL_DIR/init-project.sh"
