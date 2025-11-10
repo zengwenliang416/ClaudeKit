@@ -446,10 +446,10 @@ generate_config() {
     # 根据安装模式生成不同的配置
     if [ "$INSTALL_MODE" = "project" ]; then
         CONFIG_DIR="$INSTALL_DIR"
-        HOOKS_PATH="$INSTALL_DIR/.claude/hooks"
+        HOOKS_PATH="\$CLAUDE_PROJECT_DIR/.claude/hooks"
     else
         CONFIG_DIR="$INSTALL_DIR"
-        HOOKS_PATH="$INSTALL_DIR/.claude/hooks"
+        HOOKS_PATH="\$HOME/.claude/hooks"
     fi
 
     cat > "$CONFIG_DIR/claude-settings.json" << EOF
