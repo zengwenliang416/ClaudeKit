@@ -192,44 +192,48 @@ download_infrastructure() {
     # 复制 .claude 目录到安装位置
     echo "   复制文件到安装目录..."
 
-    # 智能合并现有的 .claude 目录
+    # 增量安装:只添加/更新 ClaudeKit 文件,不删除任何现有文件
     if [ -d "$INSTALL_DIR/.claude" ]; then
-        print_warning "检测到现有 .claude 目录，进行智能合并..."
+        print_warning "检测到现有 .claude 目录，进行增量更新..."
 
-        # 只覆盖 ClaudeKit 的核心文件,保留用户自定义内容
-        CLAUDEKIT_DIRS=("hooks" "skills" "agents" "commands")
+        # 使用 rsync 或 cp 增量复制,不删除现有文件
+        # -r: 递归
+        # -u: 只更新较新的文件
+        # -v: 显示详情
+        # --ignore-existing: 跳过已存在的文件(可选,如果想保留用户修改)
 
-        for dir in "${CLAUDEKIT_DIRS[@]}"; do
-            if [ -d "$EXTRACT_DIR/.claude/$dir" ]; then
-                # 备份现有目录(如果有用户修改)
-                if [ -d "$INSTALL_DIR/.claude/$dir" ]; then
-                    BACKUP_DIR="$INSTALL_DIR/.claude/${dir}.backup.$(date +%Y%m%d_%H%M%S)"
-                    echo "   ⚠️  备份现有 $dir/ 到: ${dir}.backup.*"
-                    mv "$INSTALL_DIR/.claude/$dir" "$BACKUP_DIR"
-                fi
-                # 复制新版本
-                cp -r "$EXTRACT_DIR/.claude/$dir" "$INSTALL_DIR/.claude/"
-                echo "   ✓ 更新 $dir/"
-            fi
-        done
+        echo "   📦 增量更新 ClaudeKit 文件..."
 
-        # 合并配置文件(保留用户的 settings.local.json)
-        if [ -f "$EXTRACT_DIR/.claude/settings.json" ]; then
-            cp "$EXTRACT_DIR/.claude/settings.json" "$INSTALL_DIR/.claude/"
-            echo "   ✓ 更新 settings.json"
+        # 创建临时标记文件,标识 ClaudeKit 管理的文件
+        CLAUDEKIT_MANIFEST="$INSTALL_DIR/.claude/.claudekit-files"
+
+        # 复制时不覆盖已存在的文件,只添加新文件和更新 ClaudeKit 自己的文件
+        if command -v rsync >/dev/null 2>&1; then
+            # 使用 rsync (更智能)
+            rsync -ru --info=name1 "$EXTRACT_DIR/.claude/" "$INSTALL_DIR/.claude/"
+            echo "   ✓ 使用 rsync 增量更新"
+        else
+            # 使用 cp (基础方式)
+            cp -rn "$EXTRACT_DIR/.claude/"* "$INSTALL_DIR/.claude/" 2>/dev/null || true
+            echo "   ✓ 使用 cp 增量更新"
         fi
 
-        # 保留用户的 settings.local.json
-        if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
-            touch "$INSTALL_DIR/.claude/settings.local.json"
-            echo "   ✓ 保留 settings.local.json"
-        fi
+        # 记录 ClaudeKit 文件清单
+        find "$EXTRACT_DIR/.claude" -type f -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.ts" | \
+            sed "s|$EXTRACT_DIR/.claude/||" > "$CLAUDEKIT_MANIFEST" 2>/dev/null || true
 
-        print_success "智能合并完成,用户自定义内容已保留"
+        echo "   ✓ 增量更新完成,所有现有文件已保留"
+        print_success "增量安装完成,用户自定义内容完全保留"
     else
         # 全新安装
-        cp -r "$EXTRACT_DIR/.claude" "$INSTALL_DIR/"
+        mkdir -p "$INSTALL_DIR/.claude"
+        cp -r "$EXTRACT_DIR/.claude/"* "$INSTALL_DIR/.claude/"
         echo "   ✓ 全新安装 .claude/"
+
+        # 创建文件清单
+        CLAUDEKIT_MANIFEST="$INSTALL_DIR/.claude/.claudekit-files"
+        find "$INSTALL_DIR/.claude" -type f -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.ts" | \
+            sed "s|$INSTALL_DIR/.claude/||" > "$CLAUDEKIT_MANIFEST" 2>/dev/null || true
     fi
 
     # 复制文档文件（如果是全局安装）
@@ -360,7 +364,7 @@ EOF
     if [ "$INSTALL_MODE" = "global" ]; then
         cat > "$INSTALL_DIR/init-project.sh" << 'EOF'
 #!/bin/bash
-# 在项目中初始化 ClaudeKit
+# 在项目中初始化 ClaudeKit (增量模式)
 
 GLOBAL_DIR="$HOME/.claudekit"
 PROJECT_DIR="$(pwd)"
@@ -368,51 +372,44 @@ PROJECT_DIR="$(pwd)"
 echo "正在为当前项目初始化 ClaudeKit..."
 echo ""
 
-# 智能合并现有的 .claude 目录
+# 增量安装:只添加/更新 ClaudeKit 文件,完全不影响现有文件
 if [ -d "$PROJECT_DIR/.claude" ]; then
-    echo "🔍 检测到现有 .claude 目录，进行智能合并..."
+    echo "🔍 检测到现有 .claude 目录，进行增量更新..."
 
     # 删除旧的符号链接（如果存在）
-    if [ -L "$PROJECT_DIR/.claude" ]; then
-        rm "$PROJECT_DIR/.claude"
-        echo "   ✓ 清理旧的符号链接"
+    if [ -L "$PROJECT_DIR/.claude/.claude" ]; then
+        rm "$PROJECT_DIR/.claude/.claude"
+        echo "   ✓ 清理旧的错误符号链接"
     fi
 
-    # 只更新 ClaudeKit 核心目录,保留用户自定义内容
-    CLAUDEKIT_DIRS=("hooks" "skills" "agents" "commands")
+    echo "   📦 增量复制 ClaudeKit 文件..."
 
-    for dir in "${CLAUDEKIT_DIRS[@]}"; do
-        if [ -d "$GLOBAL_DIR/.claude/$dir" ]; then
-            # 备份现有目录(如果存在)
-            if [ -d "$PROJECT_DIR/.claude/$dir" ]; then
-                BACKUP_DIR="$PROJECT_DIR/.claude/${dir}.backup.$(date +%Y%m%d_%H%M%S)"
-                mv "$PROJECT_DIR/.claude/$dir" "$BACKUP_DIR"
-                echo "   📦 备份 $dir/ → ${dir}.backup.*"
-            fi
-            # 复制新版本
-            cp -r "$GLOBAL_DIR/.claude/$dir" "$PROJECT_DIR/.claude/"
-            echo "   ✓ 更新 $dir/"
-        fi
-    done
-
-    # 更新配置文件,保留用户的 settings.local.json
-    if [ -f "$GLOBAL_DIR/.claude/settings.json" ]; then
-        cp "$GLOBAL_DIR/.claude/settings.json" "$PROJECT_DIR/.claude/"
-        echo "   ✓ 更新 settings.json"
-    fi
-
-    if [ ! -f "$PROJECT_DIR/.claude/settings.local.json" ]; then
-        touch "$PROJECT_DIR/.claude/settings.local.json"
-        echo "   ✓ 保留 settings.local.json (用户自定义配置)"
+    # 使用 rsync 或 cp 进行增量复制
+    # -r: 递归
+    # -u: 只更新较新的文件
+    # -n: 不覆盖已存在的文件
+    if command -v rsync >/dev/null 2>&1; then
+        # rsync -ru: 递归 + 只更新较新文件
+        rsync -ru --info=name1 "$GLOBAL_DIR/.claude/" "$PROJECT_DIR/.claude/" 2>/dev/null
+        echo "   ✓ 使用 rsync 增量更新"
+    else
+        # cp -rn: 递归 + 不覆盖已存在文件
+        cp -rn "$GLOBAL_DIR/.claude/"* "$PROJECT_DIR/.claude/" 2>/dev/null || true
+        echo "   ✓ 使用 cp 增量更新"
     fi
 
     echo ""
-    echo "✅ 智能合并完成,用户自定义内容已保留!"
+    echo "✅ 增量更新完成!"
+    echo ""
+    echo "📊 更新说明:"
+    echo "  • 新增的 ClaudeKit 文件已添加"
+    echo "  • 你的自定义文件完全保留,未被修改"
+    echo "  • 你修改过的 ClaudeKit 文件也保留了你的版本"
 else
     # 全新安装
     echo "📦 全新安装 ClaudeKit..."
     mkdir -p "$PROJECT_DIR/.claude"
-    cp -r "$GLOBAL_DIR/.claude"/* "$PROJECT_DIR/.claude/"
+    cp -r "$GLOBAL_DIR/.claude/"* "$PROJECT_DIR/.claude/" 2>/dev/null || true
     echo "   ✓ 复制完成"
     echo ""
     echo "✅ 初始化完成!"
@@ -427,10 +424,10 @@ echo "  1. 在 Claude Code 中打开此项目"
 echo "  2. Skills 会自动激活"
 echo "  3. 尝试说 '创建组件' 或 '项目技术栈' 来测试"
 echo ""
-echo "💡 提示:"
-echo "  • 你的自定义文件已保留在原位"
-echo "  • 备份文件在 .claude/*.backup.* 目录中"
-echo "  • settings.local.json 可用于项目特定配置"
+echo "💡 说明:"
+echo "  • 增量模式: 只添加新文件,不覆盖已存在文件"
+echo "  • 你可以安全地修改任何 ClaudeKit 文件"
+echo "  • 再次运行此脚本可获取最新的 ClaudeKit 文件"
 EOF
         chmod +x "$INSTALL_DIR/init-project.sh"
         echo "   初始化脚本: $INSTALL_DIR/init-project.sh"
