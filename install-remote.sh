@@ -217,20 +217,24 @@ select_install_location() {
         print_info "模式: ${BOLD}项目级安装${NC}"
     elif [ "$1" = "--global" ] || [ "$1" = "-g" ]; then
         INSTALL_MODE="global"
-        INSTALL_DIR="$HOME/.claudekit"
+        INSTALL_DIR="$HOME"
         print_info "模式: ${BOLD}全局安装${NC}"
     else
         # 交互式选择
         echo ""
-        echo -e "  ${BOLD}请选择安装位置:${NC}"
+        echo -e "  ${BOLD}请选择安装模式:${NC}"
         echo ""
-        echo -e "    ${CYAN}1)${NC} ${BOLD}当前项目目录${NC}"
-        echo -e "       ${DIM}推荐用于单个项目，配置独立${NC}"
-        echo -e "       ${DIM}路径: $(pwd)${NC}"
+        echo -e "    ${CYAN}1)${NC} ${BOLD}项目级安装${NC} ${GREEN}(推荐)${NC}"
+        echo -e "       ${DIM}• 直接安装到当前项目的 .claude/ 目录${NC}"
+        echo -e "       ${DIM}• 无需额外初始化步骤${NC}"
+        echo -e "       ${DIM}• 适合：单个项目或团队协作${NC}"
+        echo -e "       ${DIM}→ 安装路径: $(pwd)/.claude${NC}"
         echo ""
         echo -e "    ${CYAN}2)${NC} ${BOLD}全局安装${NC}"
-        echo -e "       ${DIM}所有项目共享，便于统一管理${NC}"
-        echo -e "       ${DIM}路径: ~/.claudekit${NC}"
+        echo -e "       ${DIM}• 增量安装到 ~/.claude/ 目录${NC}"
+        echo -e "       ${DIM}• 所有项目共享全局配置${NC}"
+        echo -e "       ${DIM}• 适合：统一管理多个项目的配置${NC}"
+        echo -e "       ${DIM}→ 安装路径: ~/.claude${NC}"
         echo ""
         echo -n -e "  ${BOLD}请输入选择 (1/2):${NC} "
         read -r choice
@@ -242,7 +246,7 @@ select_install_location() {
                 ;;
             2)
                 INSTALL_MODE="global"
-                INSTALL_DIR="$HOME/.claudekit"
+                INSTALL_DIR="$HOME"
                 ;;
             *)
                 echo ""
@@ -492,13 +496,13 @@ EOF
 
     # 如果是全局安装，创建初始化脚本
     if [ "$INSTALL_MODE" = "global" ]; then
-        cat > "$INSTALL_DIR/init-project.sh" << 'EOF'
+        cat > "$INSTALL_DIR/.claude/init-project.sh" << 'EOF'
 #!/bin/bash
 # ============================================================================
 # ClaudeKit - 项目初始化脚本 (增量模式)
 # ============================================================================
 
-GLOBAL_DIR="$HOME/.claudekit"
+GLOBAL_DIR="$HOME/.claude"
 PROJECT_DIR="$(pwd)"
 
 echo ""
@@ -557,8 +561,8 @@ echo "  • 你可以安全地修改任何 ClaudeKit 文件"
 echo "  • 再次运行此脚本可获取最新的 ClaudeKit 文件"
 echo ""
 EOF
-        chmod +x "$INSTALL_DIR/init-project.sh"
-        print_success "初始化脚本: ${DIM}$INSTALL_DIR/init-project.sh${NC}"
+        chmod +x "$INSTALL_DIR/.claude/init-project.sh"
+        print_success "初始化脚本: ${DIM}$INSTALL_DIR/.claude/init-project.sh${NC}"
     fi
 }
 
@@ -619,18 +623,20 @@ EOF
         echo ""
     else
         echo -e "${BOLD}🌍 全局安装完成${NC}"
-        echo -e "${DIM}   安装位置: $INSTALL_DIR${NC}"
+        echo -e "${DIM}   安装位置: $INSTALL_DIR/.claude${NC}"
         echo ""
-        echo -e "${BOLD}🚀 在项目中使用:${NC}"
+        echo -e "${BOLD}🚀 ClaudeKit 已安装到全局配置目录${NC}"
         echo ""
-        echo -e "  ${CYAN}1.${NC} 进入你的项目目录"
+        echo -e "  ${GREEN}✓${NC} 全局配置已增量更新到 ${DIM}~/.claude/${NC}"
+        echo -e "  ${GREEN}✓${NC} 所有项目将自动共享此配置"
         echo ""
-        echo -e "  ${CYAN}2.${NC} 运行初始化脚本"
-        echo -e "     ${DIM}$INSTALL_DIR/init-project.sh${NC}"
+        echo -e "${BOLD}📝 后续步骤:${NC}"
         echo ""
-        echo -e "  ${CYAN}3.${NC} 合并配置到 Claude Code 设置"
+        echo -e "  ${CYAN}1.${NC} 重启 Claude Code"
+        echo -e "     ${DIM}配置将在所有项目中生效${NC}"
         echo ""
-        echo -e "  ${CYAN}4.${NC} 重启 Claude Code"
+        echo -e "  ${CYAN}2.${NC} 测试功能"
+        echo -e "     ${DIM}尝试说 '创建组件' 或 '项目技术栈'${NC}"
         echo ""
     fi
 
