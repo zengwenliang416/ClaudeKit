@@ -337,14 +337,31 @@ PROJECT_DIR="$(pwd)"
 
 echo "正在为当前项目初始化 ClaudeKit..."
 
-# 创建符号链接
-ln -sf "$GLOBAL_DIR/.claude" "$PROJECT_DIR/.claude"
+# 备份现有 .claude 目录（如果存在）
+if [ -d "$PROJECT_DIR/.claude" ] && [ ! -L "$PROJECT_DIR/.claude" ]; then
+    BACKUP_DIR="$PROJECT_DIR/.claude.backup.$(date +%Y%m%d_%H%M%S)"
+    echo "⚠️  发现现有 .claude 目录，备份到: $BACKUP_DIR"
+    mv "$PROJECT_DIR/.claude" "$BACKUP_DIR"
+fi
+
+# 删除旧的符号链接（如果存在）
+if [ -L "$PROJECT_DIR/.claude" ]; then
+    rm "$PROJECT_DIR/.claude"
+fi
+
+# 复制 ClaudeKit 文件到项目
+echo "📦 复制 ClaudeKit 文件..."
+cp -r "$GLOBAL_DIR/.claude" "$PROJECT_DIR/"
 
 # 创建 dev 目录
 mkdir -p "$PROJECT_DIR/dev"
 
 echo "✅ 初始化完成！"
-echo "请将 $GLOBAL_DIR/claude-settings.json 的内容合并到你的 Claude Code 设置中"
+echo ""
+echo "📝 下一步:"
+echo "  1. 在 Claude Code 中打开此项目"
+echo "  2. Skills 会自动激活"
+echo "  3. 尝试说 '创建组件' 或 '项目技术栈' 来测试"
 EOF
         chmod +x "$INSTALL_DIR/init-project.sh"
         echo "   初始化脚本: $INSTALL_DIR/init-project.sh"
