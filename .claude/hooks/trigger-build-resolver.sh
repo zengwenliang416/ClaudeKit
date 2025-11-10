@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# 加载环境检测
+source "$(dirname "${BASH_SOURCE[0]}")/hook-env.sh"
+
 echo "Hook triggered at $(date)" >> /tmp/claude-hook-debug.log
 echo "Args: $@" >> /tmp/claude-hook-debug.log
 echo "Stdin:" >> /tmp/claude-hook-debug.log

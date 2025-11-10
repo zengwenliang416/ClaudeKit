@@ -1,5 +1,8 @@
 #!/bin/bash
 set -e
 
-cd "$CLAUDE_PROJECT_DIR/.claude/hooks"
+# 加载环境检测
+source "$(dirname "${BASH_SOURCE[0]}")/hook-env.sh"
+
+cd "$HOOKS_DIR"
 cat | npx tsx skill-activation-prompt.ts

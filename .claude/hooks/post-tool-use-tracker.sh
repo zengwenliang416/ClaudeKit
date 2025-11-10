@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# 加载环境检测
+source "$(dirname "${BASH_SOURCE[0]}")/hook-env.sh"
+
 # Post-tool-use hook that tracks edited files and their repos
 # This runs after Edit, MultiEdit, or Write tools complete successfully
 

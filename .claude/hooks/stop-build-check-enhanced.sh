@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# 加载环境检测
+source "$(dirname "${BASH_SOURCE[0]}")/hook-env.sh"
+
 # Stop event hook that runs build checks and provides instructions for error resolution
 # This runs when Claude Code finishes responding
 
@@ -11,7 +14,7 @@ event_info=$(cat)
 session_id=$(echo "$event_info" | jq -r '.session_id // empty')
 
 # Cache directory in project
-cache_dir="$CLAUDE_PROJECT_DIR/.claude/tsc-cache/${session_id:-default}"
+cache_dir="$CACHE_DIR/${session_id:-default}"
 
 # Check if cache exists
 if [[ ! -d "$cache_dir" ]]; then

@@ -1,12 +1,13 @@
 #!/bin/bash
 
+# 加载环境检测
+source "$(dirname "${BASH_SOURCE[0]}")/hook-env.sh"
+
 # TSC Hook with Visible Output
 # Uses stderr for visibility in Claude Code main interface
 
-CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$HOME/project}"
 HOOK_INPUT=$(cat)
 SESSION_ID="${session_id:-default}"
-CACHE_DIR="$HOME/.claude/tsc-cache/$SESSION_ID"
 
 # Create cache directory
 mkdir -p "$CACHE_DIR"
