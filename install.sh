@@ -283,6 +283,58 @@ cat > "$SETTINGS_FILE" << 'EOF'
 EOF
 
 echo "   ✓ 配置文件已生成: claude-settings.json"
+
+# 生成代理配置示例
+PROXY_SETTINGS_FILE="$PROJECT_DIR/claude-settings.proxy-example.json"
+
+cat > "$PROXY_SETTINGS_FILE" << 'EOF'
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/skill-activation-prompt.sh",
+            "description": "技术栈检测和 Skills 自动激活"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-tracker.sh",
+            "description": "文件修改追踪"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/tsc-check.sh",
+            "description": "TypeScript 类型检查"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "HTTP_PROXY": "http://127.0.0.1:7897",
+    "HTTPS_PROXY": "http://127.0.0.1:7897",
+    "http_proxy": "http://127.0.0.1:7897",
+    "https_proxy": "http://127.0.0.1:7897",
+    "NO_PROXY": "localhost,127.0.0.1"
+  }
+}
+EOF
+
+echo "   ✓ 代理配置示例已生成: claude-settings.proxy-example.json"
 print_success "配置生成完成"
 echo ""
 
@@ -304,8 +356,8 @@ echo "🚀 下一步:"
 echo ""
 echo "1. 将 claude-settings.json 的内容合并到你的 Claude Code settings.json 中"
 echo ""
-echo "2. 在 Claude Code 中设置项目目录环境变量:"
-echo "   export CLAUDE_PROJECT_DIR=\"$PROJECT_DIR\""
+echo "2. (可选) 如需使用代理,参考 claude-settings.proxy-example.json"
+echo "   在 Claude Code 设置中添加 env 配置并修改代理端口号"
 echo ""
 echo "3. 重启 Claude Code 使配置生效"
 echo ""

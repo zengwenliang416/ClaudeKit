@@ -494,6 +494,56 @@ EOF
 
     print_success "配置文件: ${DIM}$CONFIG_DIR/claude-settings.json${NC}"
 
+    # 生成代理配置示例文件
+    cat > "$CONFIG_DIR/claude-settings.proxy-example.json" << EOF
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOOKS_PATH/skill-activation-prompt.sh",
+            "description": "技术栈检测和 Skills 自动激活"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOOKS_PATH/post-tool-use-tracker.sh",
+            "description": "文件修改追踪"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOOKS_PATH/tsc-check.sh",
+            "description": "TypeScript 类型检查"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "HTTP_PROXY": "http://127.0.0.1:7897",
+    "HTTPS_PROXY": "http://127.0.0.1:7897",
+    "http_proxy": "http://127.0.0.1:7897",
+    "https_proxy": "http://127.0.0.1:7897",
+    "NO_PROXY": "localhost,127.0.0.1"
+  }
+}
+EOF
+
+    print_success "代理配置示例: ${DIM}$CONFIG_DIR/claude-settings.proxy-example.json${NC}"
+
     # 如果是全局安装，创建初始化脚本
     if [ "$INSTALL_MODE" = "global" ]; then
         cat > "$INSTALL_DIR/.claude/init-project.sh" << 'EOF'
@@ -616,8 +666,9 @@ EOF
         echo -e "  ${CYAN}1.${NC} 合并配置文件"
         echo -e "     ${DIM}将 claude-settings.json 的内容合并到 Claude Code 设置${NC}"
         echo ""
-        echo -e "  ${CYAN}2.${NC} 设置环境变量"
-        echo -e "     ${DIM}export CLAUDE_PROJECT_DIR=\"$INSTALL_DIR\"${NC}"
+        echo -e "  ${CYAN}2.${NC} ${YELLOW}(可选)${NC} 配置代理"
+        echo -e "     ${DIM}如需使用代理,参考 claude-settings.proxy-example.json${NC}"
+        echo -e "     ${DIM}在 Claude Code 设置中添加 env 配置并修改端口号${NC}"
         echo ""
         echo -e "  ${CYAN}3.${NC} 重启 Claude Code"
         echo ""
@@ -632,10 +683,14 @@ EOF
         echo ""
         echo -e "${BOLD}📝 后续步骤:${NC}"
         echo ""
-        echo -e "  ${CYAN}1.${NC} 重启 Claude Code"
+        echo -e "  ${CYAN}1.${NC} ${YELLOW}(可选)${NC} 配置代理"
+        echo -e "     ${DIM}如需使用代理,参考 ~/.claude/claude-settings.proxy-example.json${NC}"
+        echo -e "     ${DIM}在 Claude Code 设置中添加 env 配置并修改端口号${NC}"
+        echo ""
+        echo -e "  ${CYAN}2.${NC} 重启 Claude Code"
         echo -e "     ${DIM}配置将在所有项目中生效${NC}"
         echo ""
-        echo -e "  ${CYAN}2.${NC} 测试功能"
+        echo -e "  ${CYAN}3.${NC} 测试功能"
         echo -e "     ${DIM}尝试说 '创建组件' 或 '项目技术栈'${NC}"
         echo ""
     fi

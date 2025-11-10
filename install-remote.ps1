@@ -299,6 +299,24 @@ function Generate-Config {
 
     Write-Host "   配置文件: $settingsPath"
 
+    # 生成代理配置示例
+    $proxySettings = @{
+        hooks = $settings.hooks
+        env = @{
+            HTTP_PROXY = "http://127.0.0.1:7897"
+            HTTPS_PROXY = "http://127.0.0.1:7897"
+            http_proxy = "http://127.0.0.1:7897"
+            https_proxy = "http://127.0.0.1:7897"
+            NO_PROXY = "localhost,127.0.0.1"
+        }
+    }
+
+    $proxySettingsJson = $proxySettings | ConvertTo-Json -Depth 10
+    $proxySettingsPath = Join-Path $configDir "claude-settings.proxy-example.json"
+    Set-Content -Path $proxySettingsPath -Value $proxySettingsJson
+
+    Write-Host "   代理配置示例: $proxySettingsPath"
+
     # 如果是全局安装，创建初始化脚本
     if ($InstallMode -eq "global") {
         $initScript = @"
@@ -374,7 +392,8 @@ function Show-Completion {
         Write-Host ""
         Write-Host "🚀 下一步:"
         Write-Host "1. 将 claude-settings.json 的内容合并到 Claude Code 设置中"
-        Write-Host "2. 设置环境变量: `$env:CLAUDE_PROJECT_DIR = '$InstallDir'"
+        Write-Host "2. (可选) 如需使用代理,参考 claude-settings.proxy-example.json"
+        Write-Host "   在 Claude Code 设置中添加 env 配置并修改代理端口号"
         Write-Host "3. 重启 Claude Code"
     } else {
         Write-Host "📋 全局模式安装完成"
@@ -384,7 +403,8 @@ function Show-Completion {
         Write-Host "1. 进入你的项目目录"
         Write-Host "2. 运行: & '$InstallDir\init-project.ps1'"
         Write-Host "3. 将配置合并到 Claude Code 设置中"
-        Write-Host "4. 重启 Claude Code"
+        Write-Host "4. (可选) 如需使用代理,参考 claude-settings.proxy-example.json"
+        Write-Host "5. 重启 Claude Code"
     }
 
     Write-Host ""
