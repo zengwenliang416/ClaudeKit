@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, existsSync } from 'fs';
+import { join, resolve } from 'path';
+import { homedir } from 'os';
 
 interface HookInput {
     session_id: string;
@@ -33,17 +34,75 @@ interface MatchedSkill {
     config: SkillRule;
 }
 
+// Utility function to normalize and tokenize prompt for better matching
+function normalizePrompt(prompt: string): string {
+    return prompt
+        .toLowerCase()
+        .trim()
+        // Normalize whitespace
+        .replace(/\s+/g, ' ')
+        // Remove common punctuation that might interfere with matching
+        .replace(/[?!。？！]/g, '');
+}
+
+// Check if keyword matches with flexible matching
+function keywordMatches(prompt: string, keyword: string): boolean {
+    const normalizedPrompt = normalizePrompt(prompt);
+    const normalizedKeyword = keyword.toLowerCase().trim();
+
+    // Exact substring match
+    if (normalizedPrompt.includes(normalizedKeyword)) {
+        return true;
+    }
+
+    // Word boundary match for multi-word keywords
+    const words = normalizedKeyword.split(/\s+/);
+    if (words.length > 1) {
+        // All words must appear in prompt (not necessarily consecutively)
+        return words.every(word => normalizedPrompt.includes(word));
+    }
+
+    return false;
+}
+
 async function main() {
     try {
         // Read input from stdin
         const input = readFileSync(0, 'utf-8');
         const data: HookInput = JSON.parse(input);
-        const prompt = data.prompt.toLowerCase();
+        const prompt = data.prompt;
 
-        // Load skill rules
-        const projectDir = process.env.CLAUDE_PROJECT_DIR || '$HOME/project';
+        // Determine project directory with proper fallbacks
+        let projectDir = process.env.CLAUDE_PROJECT_DIR;
+
+        if (!projectDir) {
+            // Fallback 1: Try to detect from script location
+            // Script is at PROJECT/.claude/hooks/skill-activation-prompt.ts
+            const scriptDir = __dirname;
+            if (scriptDir.includes('.claude/hooks')) {
+                projectDir = resolve(scriptDir, '../..');
+            } else {
+                // Fallback 2: Use cwd from hook input
+                projectDir = data.cwd;
+            }
+        }
+
+        // Validate project directory
+        if (!projectDir || !existsSync(projectDir)) {
+            console.error(`[skill-activation-prompt] Invalid project directory: ${projectDir}`);
+            process.exit(1);
+        }
+
+        // Load skill rules with validation
         const rulesPath = join(projectDir, '.claude', 'skills', 'skill-rules.json');
-        const rules: SkillRules = JSON.parse(readFileSync(rulesPath, 'utf-8'));
+
+        if (!existsSync(rulesPath)) {
+            console.error(`[skill-activation-prompt] skill-rules.json not found at: ${rulesPath}`);
+            process.exit(1);
+        }
+
+        const rulesContent = readFileSync(rulesPath, 'utf-8');
+        const rules: SkillRules = JSON.parse(rulesContent);
 
         const matchedSkills: MatchedSkill[] = [];
 
@@ -54,25 +113,31 @@ async function main() {
                 continue;
             }
 
-            // Keyword matching
-            if (triggers.keywords) {
-                const keywordMatch = triggers.keywords.some(kw =>
-                    prompt.includes(kw.toLowerCase())
-                );
+            let matched = false;
+
+            // Keyword matching with improved flexibility
+            if (triggers.keywords && !matched) {
+                const keywordMatch = triggers.keywords.some(kw => keywordMatches(prompt, kw));
                 if (keywordMatch) {
                     matchedSkills.push({ name: skillName, matchType: 'keyword', config });
-                    continue;
+                    matched = true;
                 }
             }
 
-            // Intent pattern matching
-            if (triggers.intentPatterns) {
+            // Intent pattern matching (only if not already matched by keyword)
+            if (triggers.intentPatterns && !matched) {
                 const intentMatch = triggers.intentPatterns.some(pattern => {
-                    const regex = new RegExp(pattern, 'i');
-                    return regex.test(prompt);
+                    try {
+                        const regex = new RegExp(pattern, 'i');
+                        return regex.test(prompt);
+                    } catch (e) {
+                        console.error(`[skill-activation-prompt] Invalid regex pattern "${pattern}" in skill "${skillName}":`, e);
+                        return false;
+                    }
                 });
                 if (intentMatch) {
                     matchedSkills.push({ name: skillName, matchType: 'intent', config });
+                    matched = true;
                 }
             }
         }
@@ -121,12 +186,30 @@ async function main() {
 
         process.exit(0);
     } catch (err) {
-        console.error('Error in skill-activation-prompt hook:', err);
-        process.exit(1);
+        // Log error details for debugging
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('❌ HOOK ERROR: skill-activation-prompt');
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('Error:', err instanceof Error ? err.message : String(err));
+
+        if (err instanceof Error && err.stack) {
+            console.error('Stack:', err.stack);
+        }
+
+        console.error('Environment:');
+        console.error('  CLAUDE_PROJECT_DIR:', process.env.CLAUDE_PROJECT_DIR || '(not set)');
+        console.error('  __dirname:', __dirname);
+        console.error('  cwd:', process.cwd());
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        // Exit with success to not block Claude
+        // Hook failures should be visible but not blocking
+        process.exit(0);
     }
 }
 
 main().catch(err => {
-    console.error('Uncaught error:', err);
-    process.exit(1);
+    console.error('Uncaught error in skill-activation-prompt:', err);
+    // Exit with success to not block Claude
+    process.exit(0);
 });
